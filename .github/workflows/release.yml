@@ -3,8 +3,7 @@ name: Build and publish Nuvem Fofa
 on:
   push:
     tags:
-      - 'v*.*.*'
-  workflow_dispatch:
+      - "v*"
 
 permissions:
   contents: write
@@ -12,6 +11,7 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,13 +19,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: Build and publish Windows release
+      - name: Build Windows
+        run: npx electron-builder --win nsis --publish never
+
+      - name: Mostrar arquivos gerados
+        shell: powershell
+        run: |
+          Write-Host "Arquivos em dist:"
+          Get-ChildItem -Path dist -Recurse | Select-Object FullName, Length
+
+      - name: Criar Release e enviar arquivos
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/latest.yml
+          generate_release_notes: true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run release:win
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
