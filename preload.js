@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('nuvemDesktop', {
   isDesktop:true,
   platform:process.platform,
-  version:'0.3.11',
+  version:'0.3.12',
   checkForUpdates:()=>ipcRenderer.invoke('nuvem-update-check'),
   installUpdate:()=>ipcRenderer.invoke('nuvem-update-install'),
   getUpdateStatus:()=>ipcRenderer.invoke('nuvem-update-status'),
@@ -15,10 +15,7 @@ contextBridge.exposeInMainWorld('nuvemDesktop', {
   onUpdateEvent:(cb)=>{ipcRenderer.removeAllListeners('nuvem-update');ipcRenderer.on('nuvem-update',(_,data)=>cb(data));return ()=>ipcRenderer.removeAllListeners('nuvem-update')}
 });
 
-// IMPORTANTE: os hotfixes alteram algumas das mesmas funções globais.
-// Scripts inseridos dinamicamente com `defer` podem terminar de carregar fora de ordem,
-// fazendo um hotfix antigo (como o v0.3.9) sobrescrever o fullscreen novo do v0.3.10.
-// Carregamos um por vez para garantir que o patch mais recente seja sempre o último.
+// Os hotfixes alteram algumas das mesmas funções globais; a ordem é intencional.
 window.addEventListener('DOMContentLoaded', async () => {
   const sources = [
     './v032-fixes.js',
@@ -28,7 +25,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     './v037-discord-fixes.js',
     './v038-stream-fixes.js',
     './v039-stream-hotfix.js',
-    './v0310-stream-focus.js'
+    './v0310-stream-focus.js',
+    './v0312-core-fixes.js'
   ];
 
   for (const src of sources) {
