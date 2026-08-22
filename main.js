@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, desktopCapturer, ipcMain } = require('electron');
+const { app, BrowserWindow, session, desktopCapturer, ipcMain, clipboard } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
@@ -7,6 +7,7 @@ app.setAppUserModelId('com.nuvemfofa.desktop');
 
 let mainWindow;
 let updaterConfigured = false;
+let pendingCaptureSourceId = null;
 
 function sendUpdate(payload){
   if(mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('nuvem-update', payload);
@@ -46,11 +47,22 @@ app.whenReady().then(async()=>{
     session.defaultSession.setDisplayMediaRequestHandler(async(request,callback)=>{
       try{
         const sources=await desktopCapturer.getSources({types:['screen','window'],thumbnailSize:{width:640,height:360},fetchWindowIcons:true});
-        // Keep Chromium's system picker when available. This callback only supplies a fallback.
-        callback({video:sources[0],audio:'loopback'});
-      }catch(e){callback({});}
-    },{useSystemPicker:true});
+        const chosen=sources.find(s=>s.id===pendingCaptureSourceId)||sources[0];
+        pendingCaptureSourceId=null;
+        callback(chosen?{video:chosen,audio:'loopback'}:{});
+      }catch(e){pendingCaptureSourceId=null;callback({});}
+    });
   }
+  ipcMain.handle('nuvem-capture-sources',async()=>{
+    const [screens,windows]=await Promise.all([
+      desktopCapturer.getSources({types:['screen'],thumbnailSize:{width:420,height:236},fetchWindowIcons:true}),
+      desktopCapturer.getSources({types:['window'],thumbnailSize:{width:420,height:236},fetchWindowIcons:true})
+    ]);
+    const pack=(s,type)=>({id:s.id,name:s.name,type,thumbnail:s.thumbnail?.toDataURL?.()||'',icon:s.appIcon?.toDataURL?.()||''});
+    return [...screens.map(s=>pack(s,'screen')),...windows.map(s=>pack(s,'window'))];
+  });
+  ipcMain.handle('nuvem-capture-select',(_,sourceId)=>{pendingCaptureSourceId=String(sourceId||'');return true});
+  ipcMain.handle('nuvem-copy-text',(_,text)=>{clipboard.writeText(String(text||''));return true});
   ipcMain.handle('nuvem-update-check',async()=>{if(!app.isPackaged)return {ok:false,dev:true};try{await autoUpdater.checkForUpdates();return {ok:true}}catch(e){return {ok:false,error:e.message}}});
   ipcMain.handle('nuvem-update-install',()=>{if(!app.isPackaged)return false;autoUpdater.quitAndInstall(true,true);return true});
   ipcMain.handle('nuvem-update-status',()=>({version:app.getVersion(),packaged:app.isPackaged}));
