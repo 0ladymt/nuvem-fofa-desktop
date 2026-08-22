@@ -14,6 +14,14 @@ function sendUpdate(payload){
   if(mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('nuvem-update', payload);
 }
 
+function sendWindowState(){
+  if(!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send('nuvem-window-state', {
+    maximized: mainWindow.isMaximized(),
+    fullscreen: mainWindow.isFullScreen()
+  });
+}
+
 function configureUpdater(){
   if(!app.isPackaged || updaterConfigured) return;
   updaterConfigured = true;
@@ -34,9 +42,15 @@ function createWindow(){
   mainWindow = new BrowserWindow({
     width:1440,height:900,minWidth:980,minHeight:650,
     backgroundColor:'#111214',title:'Nuvem Fofa',icon:path.join(__dirname,'assets','nuvem-fofa.ico'),autoHideMenuBar:true,
+    frame:false,
     webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}
   });
   mainWindow.loadFile(path.join(__dirname,'app','index.html'));
+  mainWindow.on('maximize',sendWindowState);
+  mainWindow.on('unmaximize',sendWindowState);
+  mainWindow.on('enter-full-screen',sendWindowState);
+  mainWindow.on('leave-full-screen',sendWindowState);
+  mainWindow.webContents.on('did-finish-load',sendWindowState);
   mainWindow.on('closed',()=>{mainWindow=null});
 }
 
@@ -66,7 +80,11 @@ app.whenReady().then(async()=>{
   ipcMain.handle('nuvem-capture-select',(_,sourceId)=>{pendingCaptureSourceId=String(sourceId||'');return true});
   ipcMain.handle('nuvem-capture-state',()=>activeCaptureSource||{});
   ipcMain.handle('nuvem-copy-text',(_,text)=>{clipboard.writeText(String(text||''));return true});
-  ipcMain.handle('nuvem-window-fullscreen',(_,enabled)=>{if(!mainWindow||mainWindow.isDestroyed())return false;mainWindow.setFullScreen(!!enabled);return mainWindow.isFullScreen()});
+  ipcMain.handle('nuvem-window-fullscreen',(_,enabled)=>{if(!mainWindow||mainWindow.isDestroyed())return false;mainWindow.setFullScreen(!!enabled);sendWindowState();return mainWindow.isFullScreen()});
+  ipcMain.handle('nuvem-window-minimize',()=>{if(!mainWindow||mainWindow.isDestroyed())return false;mainWindow.minimize();return true});
+  ipcMain.handle('nuvem-window-toggle-maximize',()=>{if(!mainWindow||mainWindow.isDestroyed())return false;if(mainWindow.isMaximized())mainWindow.unmaximize();else mainWindow.maximize();sendWindowState();return mainWindow.isMaximized()});
+  ipcMain.handle('nuvem-window-close',()=>{if(!mainWindow||mainWindow.isDestroyed())return false;mainWindow.close();return true});
+  ipcMain.handle('nuvem-window-state',()=>({maximized:!!mainWindow?.isMaximized(),fullscreen:!!mainWindow?.isFullScreen()}));
   ipcMain.handle('nuvem-window-capture-protection',(_,enabled)=>{if(!mainWindow||mainWindow.isDestroyed())return false;try{mainWindow.setContentProtection(!!enabled);return true}catch{return false}});
   ipcMain.handle('nuvem-update-check',async()=>{if(!app.isPackaged)return {ok:false,dev:true};try{await autoUpdater.checkForUpdates();return {ok:true}}catch(e){return {ok:false,error:e.message}}});
   ipcMain.handle('nuvem-update-install',()=>{if(!app.isPackaged)return false;autoUpdater.quitAndInstall(true,true);return true});
