@@ -1,6 +1,6 @@
 {
   "name": "nuvem-fofa-desktop",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Nuvem Fofa desktop client",
   "main": "main.js",
   "private": true,
@@ -9,49 +9,15 @@
     "dist:win": "electron-builder --win nsis --publish never",
     "release:win": "electron-builder --win nsis --publish always"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/0ladymt/nuvem-fofa-desktop.git"
-  },
-  "dependencies": {
-    "electron-updater": "^6.6.2",
-    "electron-log": "^5.4.3"
-  },
-  "devDependencies": {
-    "electron": "^38.0.0",
-    "electron-builder": "^26.15.7"
-  },
+  "repository": {"type":"git","url":"https://github.com/0ladymt/nuvem-fofa-desktop.git"},
+  "dependencies": {"electron-updater":"^6.6.2","electron-log":"^5.4.3"},
+  "devDependencies": {"electron":"^38.0.0","electron-builder":"^26.15.7"},
   "build": {
-    "appId": "com.nuvemfofa.desktop",
-    "productName": "Nuvem Fofa",
-    "files": [
-      "app/**/*",
-      "main.js",
-      "preload.js",
-      "package.json",
-      "assets/**/*"
-    ],
-    "win": {
-      "target": "nsis",
-      "artifactName": "Nuvem-Fofa-Setup-${version}.exe",
-      "verifyUpdateCodeSignature": false,
-      "icon": "assets/nuvem-fofa.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "perMachine": false
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "0ladymt",
-        "repo": "nuvem-fofa-desktop",
-        "releaseType": "release"
-      }
-    ],
-    "icon": "assets/nuvem-fofa.ico"
+    "appId":"com.nuvemfofa.desktop","productName":"Nuvem Fofa",
+    "files":["app/**/*","main.js","preload.js","package.json","assets/**/*"],
+    "win":{"target":"nsis","artifactName":"Nuvem-Fofa-Setup-${version}.exe","verifyUpdateCodeSignature":false,"icon":"assets/nuvem-fofa.ico"},
+    "nsis":{"oneClick":false,"allowToChangeInstallationDirectory":true,"createDesktopShortcut":true,"createStartMenuShortcut":true,"perMachine":false},
+    "publish":[{"provider":"github","owner":"0ladymt","repo":"nuvem-fofa-desktop","releaseType":"release"}],
+    "icon":"assets/nuvem-fofa.ico"
   }
 }
