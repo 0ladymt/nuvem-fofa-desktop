@@ -8,6 +8,7 @@ app.setAppUserModelId('com.nuvemfofa.desktop');
 let mainWindow;
 let updaterConfigured = false;
 let pendingCaptureSourceId = null;
+let activeCaptureSource = null;
 
 function sendUpdate(payload){
   if(mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('nuvem-update', payload);
@@ -48,9 +49,10 @@ app.whenReady().then(async()=>{
       try{
         const sources=await desktopCapturer.getSources({types:['screen','window'],thumbnailSize:{width:640,height:360},fetchWindowIcons:true});
         const chosen=sources.find(s=>s.id===pendingCaptureSourceId)||sources[0];
+        activeCaptureSource=chosen?{id:chosen.id,name:chosen.name,type:String(chosen.id||'').startsWith('screen:')?'screen':'window'}:null;
         pendingCaptureSourceId=null;
         callback(chosen?{video:chosen,audio:'loopback'}:{});
-      }catch(e){pendingCaptureSourceId=null;callback({});}
+      }catch(e){pendingCaptureSourceId=null;activeCaptureSource=null;callback({});}
     });
   }
   ipcMain.handle('nuvem-capture-sources',async()=>{
@@ -62,8 +64,10 @@ app.whenReady().then(async()=>{
     return [...screens.map(s=>pack(s,'screen')),...windows.map(s=>pack(s,'window'))];
   });
   ipcMain.handle('nuvem-capture-select',(_,sourceId)=>{pendingCaptureSourceId=String(sourceId||'');return true});
+  ipcMain.handle('nuvem-capture-state',()=>activeCaptureSource||{});
   ipcMain.handle('nuvem-copy-text',(_,text)=>{clipboard.writeText(String(text||''));return true});
   ipcMain.handle('nuvem-window-fullscreen',(_,enabled)=>{if(!mainWindow||mainWindow.isDestroyed())return false;mainWindow.setFullScreen(!!enabled);return mainWindow.isFullScreen()});
+  ipcMain.handle('nuvem-window-capture-protection',(_,enabled)=>{if(!mainWindow||mainWindow.isDestroyed())return false;try{mainWindow.setContentProtection(!!enabled);return true}catch{return false}});
   ipcMain.handle('nuvem-update-check',async()=>{if(!app.isPackaged)return {ok:false,dev:true};try{await autoUpdater.checkForUpdates();return {ok:true}}catch(e){return {ok:false,error:e.message}}});
   ipcMain.handle('nuvem-update-install',()=>{if(!app.isPackaged)return false;autoUpdater.quitAndInstall(true,true);return true});
   ipcMain.handle('nuvem-update-status',()=>({version:app.getVersion(),packaged:app.isPackaged}));
