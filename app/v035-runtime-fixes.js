@@ -1,4 +1,4 @@
-// Nuvem Fofa v0.3.5 — correções que atuam no estado real do app
+// Nuvem Fofa v0.3.6 — correções que atuam no estado real do app
 (() => {
   const $ = id => document.getElementById(id);
   const qsa = (s,r=document) => [...r.querySelectorAll(s)];
@@ -41,17 +41,16 @@
   function ensureVersion(){
     let e=$('nfAppVersion');
     if(!e){e=document.createElement('div');e.id='nfAppVersion';e.className='nf-app-version';document.body.appendChild(e)}
-    e.textContent='v'+(window.nuvemDesktop?.version||'0.3.5');
+    const text='v'+(window.nuvemDesktop?.version||'0.3.6');
+    if(e.textContent!==text)e.textContent=text;
   }
 
-  // Fecha modais clicando na área escura, sem interferir nos controles internos.
   document.addEventListener('mousedown',e=>{
     const m=e.target;
     if(!(m instanceof HTMLElement) || !m.classList.contains('modal') || !m.classList.contains('active')) return;
     if(['serverSettingsModal','userProfileModal','profileModal','settingsModal','sharePickerModal','inviteJoinModal'].includes(m.id)) closeModal(m.id);
   },true);
 
-  // Fullscreen estável: não usa Fullscreen API do Chromium/Electron, que estava deixando a tela verde.
   function ensureStreamOverlay(){
     let o=$('nfStableStreamOverlay');
     if(o)return o;
@@ -71,7 +70,6 @@
   };
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('nfStableStreamOverlay')?.classList.contains('show')){e.preventDefault();closeStableFullscreen()}},true);
 
-  // Crop em PNG e usando as variáveis reais do index.html, preservando melhor a cor original.
   applyCrop=function(){
     if(!cropState)return;
     const st=cropState,{img,type}=st,z=st.z||1,x=st.x||0,y=st.y||0;
@@ -94,7 +92,6 @@
     if(st.input)st.input.value='';cropState=null;closeModal('cropModal');
   };
 
-  // Configurações do servidor: uma única foto e salvamento real no Firebase.
   const openServerBase=openServerSettings;
   openServerSettings=async function(){
     await openServerBase();
@@ -120,7 +117,6 @@
     }catch(e){toast('Não foi possível salvar o servidor: '+(e.message||''))}
   };
 
-  // Convites: quem já é membro vai direto ao servidor.
   async function openInviteDirect(code){
     try{
       const s=await db.ref('serverInvites/'+code).once('value');if(!s.exists())return toast('Convite inválido ou expirado.');
@@ -137,7 +133,6 @@
     if(btn){const host=btn.closest('.msg-text,.dm-message-text,.message-content,[data-message-text]')||btn.parentElement?.parentElement;const a=host?.querySelector('a[href*="invite="]');if(a){try{const code=new URL(a.href).searchParams.get('invite');if(code){e.preventDefault();openInviteDirect(code)}}catch{}}}
   },true);
 
-  // Menu de transmissão igual ao comportamento pedido: ativo em verde + seta ao lado.
   window.nfShareSettings=window.nfShareSettings||{height:1080,width:1920,fps:60};
   function applyShareSettings(){
     const tr=localScreenStream?.getVideoTracks?.()[0];if(!tr)return;
@@ -156,7 +151,8 @@
   }
   function refreshShareControl(){
     const btn=$('callShareBtn');if(!btn)return;
-    const active=!!localScreenStream;btn.classList.toggle('nf-share-active',active);
+    const active=!!localScreenStream;
+    if(btn.classList.contains('nf-share-active')!==active)btn.classList.toggle('nf-share-active',active);
     const group=btn.parentElement?.classList.contains('nf-share-group')?btn.parentElement:null;
     if(active&&!group){const g=document.createElement('span');g.className='nf-share-group';btn.parentNode.insertBefore(g,btn);g.appendChild(btn);const a=document.createElement('button');a.className='nf-share-arrow';a.title='Opções da transmissão';a.innerHTML='<svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3"><path d="m6 9 6 6 6-6"/></svg>';a.onclick=e=>{e.stopPropagation();openShareMenu(a)};g.appendChild(a)}
     if(!active&&group){const p=group.parentNode;p.insertBefore(btn,group);group.remove()}
@@ -164,7 +160,9 @@
   document.addEventListener('click',e=>{const m=$('nfShareMenuV35');if(m?.classList.contains('show')&&!e.target.closest('#nfShareMenuV35,.nf-share-arrow'))m.classList.remove('show')},true);
 
   ensureVersion();
-  const mo=new MutationObserver(()=>{ensureVersion();refreshShareControl();if($('serverSettingsModal')?.classList.contains('active'))$('nfServerIconEditor')?.remove()});
-  mo.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
-  setInterval(refreshShareControl,500);
+  setInterval(()=>{
+    ensureVersion();
+    refreshShareControl();
+    if($('serverSettingsModal')?.classList.contains('active'))$('nfServerIconEditor')?.remove();
+  },700);
 })();
