@@ -1,98 +1,139 @@
-// Nuvem Fofa v0.3.2 — correções incrementais sem mexer na base aprovada
+// Nuvem Fofa v0.3.2 — estabilização da interface e convites
 (() => {
   const $ = id => document.getElementById(id);
+  let pendingServerIconV032 = null;
 
-  // Convites criados no desktop precisam apontar para uma URL pública que outra
-  // pessoa consiga abrir, e não para file:///... da instalação local.
-  window.getPublicInviteBase = function getPublicInviteBase(){
-    const configured = localStorage.getItem('nuvemPublicUrl');
-    if(configured) return configured.replace(/\/$/, '');
-    if(location.protocol === 'http:' || location.protocol === 'https:') return location.origin + location.pathname.replace(/\/$/, '');
-    return 'https://nuvemfofa.netlify.app/';
+  const style = document.createElement('style');
+  style.textContent = `
+    .voice-panel-user{display:none!important}
+    .nf-stream-focus{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:99999!important;border-radius:0!important;background:#000!important;margin:0!important;max-width:none!important;max-height:none!important}
+    .nf-stream-focus video{width:100%!important;height:100%!important;object-fit:contain!important;background:#000!important}
+    .nf-stream-focus .fullscreen-btn{position:absolute!important;top:14px!important;right:14px!important;z-index:100001!important}
+    .nf-invite-link{color:#00a8fc;text-decoration:none;cursor:pointer;word-break:break-all}
+    .nf-invite-link:hover{text-decoration:underline}
+    #mediaViewerBody img,.media-viewer-body img{filter:none!important;mix-blend-mode:normal!important;opacity:1!important}
+  `;
+  document.head.appendChild(style);
+
+  // Remove o perfil duplicado que a v0.3.1 adicionava dentro do painel de voz.
+  function cleanupDuplicateVoiceProfile(){
+    document.querySelectorAll('#voicePanel .voice-panel-user').forEach(el=>el.remove());
+  }
+  const voiceObs = new MutationObserver(cleanupDuplicateVoiceProfile);
+  voiceObs.observe(document.documentElement,{subtree:true,childList:true});
+  cleanupDuplicateVoiceProfile();
+
+  // Fullscreen confiável no Electron: usa modo de foco que ocupa toda a janela.
+  window.fullscreenTile = async function(id){
+    const el=$(id); if(!el) return;
+    const active=el.classList.contains('nf-stream-focus');
+    document.querySelectorAll('.nf-stream-focus').forEach(x=>x.classList.remove('nf-stream-focus'));
+    if(active) return;
+    el.classList.add('nf-stream-focus');
+    try{ await el.requestFullscreen?.(); }catch{}
+  };
+  document.addEventListener('fullscreenchange',()=>{
+    if(!document.fullscreenElement) document.querySelectorAll('.nf-stream-focus').forEach(x=>x.classList.remove('nf-stream-focus'));
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape') document.querySelectorAll('.nf-stream-focus').forEach(x=>x.classList.remove('nf-stream-focus'));
+  });
+
+  // Preserva melhor as cores e a nitidez de avatar ao recortar; também corrige serverIcon.
+  const originalApplyCrop = window.applyCrop;
+  window.applyCrop = function(){
+    if(!window.cropState || !['avatar','serverIcon'].includes(cropState.type)) return originalApplyCrop?.();
+    const {img,type}=cropState,z=cropState.z||1,x=cropState.x||0,y=cropState.y||0;
+    const outW=1024,outH=1024,f=window.cropFrame(),previewW=f.w,previewH=f.h;
+    const base=Math.max(previewW/img.width,previewH/img.height)*z;
+    const dispW=img.width*base,dispH=img.height*base;
+    const scaleX=outW/previewW,scaleY=outH/previewH;
+    const c=document.createElement('canvas');c.width=outW;c.height=outH;
+    const ctx=c.getContext('2d',{alpha:true});
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    const drawW=dispW*scaleX,drawH=dispH*scaleY;
+    const dx=(outW-drawW)/2+x*scaleX,dy=(outH-drawH)/2+y*scaleY;
+    ctx.drawImage(img,dx,dy,drawW,drawH);
+    const data=c.toDataURL('image/png');
+    if(type==='avatar'){
+      window.pendingAvatarData=data;
+      if($('profileAvatarPreview')) $('profileAvatarPreview').src=data;
+    }else{
+      pendingServerIconV032=data;
+      if($('serverIconPreview')){
+        $('serverIconPreview').style.backgroundImage=`url(${data})`;
+        $('serverIconPreview').style.backgroundSize='cover';
+        $('serverIconPreview').style.backgroundPosition='center';
+      }
+    }
+    try{cropState.input.value=''}catch{}
+    window.cropState=null;
+    window.closeModal?.('cropModal');
   };
 
-  const originalCreateInvite = window.createServerInvite;
-  if(typeof originalCreateInvite === 'function'){
-    window.createServerInvite = async function(){
-      await originalCreateInvite();
-      const input = $('inviteLink');
-      if(!input?.value) return;
-      try{
-        const oldUrl = new URL(input.value);
-        const code = oldUrl.searchParams.get('invite');
-        if(code) input.value = `${getPublicInviteBase()}?invite=${encodeURIComponent(code)}`;
-      }catch{}
-    };
-  }
+  const originalOpenServerSettings = window.openServerSettings;
+  window.openServerSettings = async function(){
+    await originalOpenServerSettings?.();
+    pendingServerIconV032=null;
+    if(!window.currentServer || !window.db) return;
+    const s=await db.ref('servers/'+currentServer).once('value'),d=s.val()||{};
+    const p=$('serverIconPreview');
+    if(p){
+      p.style.backgroundImage=d.icon?`url(${d.icon})`:'';
+      p.style.backgroundSize='cover';p.style.backgroundPosition='center';
+    }
+  };
 
-  // Links de convite recebidos em mensagens ficam clicáveis e abrem o fluxo de entrada.
+  window.saveServerSettings = async function(){
+    if(!window.currentServer) return;
+    const patch={name:$('serverEditName')?.value.trim()||'Servidor'};
+    try{ if(window.pendingServerCover) patch.cover=window.pendingServerCover; }catch{}
+    if(pendingServerIconV032) patch.icon=pendingServerIconV032;
+    await db.ref('servers/'+currentServer).update(patch);
+    window.closeModal?.('serverSettingsModal');
+    window.toast?.('Servidor atualizado.');
+    const s=await db.ref('servers/'+currentServer).once('value');
+    window.selectServer?.(currentServer,s.val()||patch);
+  };
+
+  // Convites públicos e clicáveis dentro das mensagens.
+  window.getPublicInviteBase = function(){ return 'https://nuvemfofa.netlify.app/'; };
+  const originalCreateInvite = window.createServerInvite;
+  window.createServerInvite = async function(){
+    await originalCreateInvite?.();
+    const input=$('inviteLink'); if(!input?.value) return;
+    const m=input.value.match(/[?&]invite=([A-Za-z0-9_-]+)/i);
+    if(m) input.value=`https://nuvemfofa.netlify.app/?invite=${encodeURIComponent(m[1])}`;
+  };
+
   function inviteCodeFromText(text){
-    const m = String(text || '').match(/(?:https?:\/\/[^\s]+|file:\/\/\/[^\s]+)[?&]invite=([A-Za-z0-9_-]+)/i);
-    return m?.[1] || null;
+    const m=String(text||'').match(/https?:\/\/nuvemfofa\.netlify\.app\/?\?invite=([A-Za-z0-9_-]+)/i);
+    return m?.[1]||null;
   }
   async function openInviteCode(code){
-    if(!code || !window.db || !window.currentUser) return;
-    const s = await db.ref('serverInvites/' + code).once('value');
+    if(!code||!window.db||!window.currentUser) return;
+    const s=await db.ref('serverInvites/'+code).once('value');
     if(!s.exists()) return window.toast?.('Convite inválido ou expirado.');
-    const inv = s.val();
-    const sv = await db.ref('servers/' + inv.serverId).once('value');
+    const inv=s.val(),sv=await db.ref('servers/'+inv.serverId).once('value');
     if(!sv.exists()) return window.toast?.('Servidor não existe mais.');
-    const server = sv.val() || {};
-    if(server.createdBy === currentUser.uid || server.members?.[currentUser.uid]) return window.toast?.('Você já participa deste servidor.');
-    window.pendingInvite = {code, ...inv, server};
-    const owner = await db.ref('users/' + server.createdBy).once('value');
-    const count = (server.members ? Object.keys(server.members).length : 0) + (server.createdBy && !server.members?.[server.createdBy] ? 1 : 0);
-    const box = $('inviteJoinText');
-    if(box) box.innerHTML = `<div class="invite-rich-banner" style="background-image:${server.cover ? `url(${server.cover})` : 'linear-gradient(135deg,#5865f2,#7c3aed)'}"></div><div class="invite-rich-body"><div class="invite-rich-icon">${(server.name||'S').split(/\s+/).map(x=>x[0]).join('').slice(0,3).toUpperCase()}</div><div class="muted tiny" style="margin-top:10px">VOCÊ FOI CONVIDADA PARA</div><h2>${server.name||'Servidor'}</h2><div class="invite-rich-stats">${count} membro${count===1?'':'s'} · Convite de ${owner.val()?.username||'um membro'}</div><p class="muted">Ao entrar, este servidor aparecerá na sua barra lateral.</p></div>`;
+    const server=sv.val()||{};
+    if(server.createdBy===currentUser.uid||server.members?.[currentUser.uid]) return window.toast?.('Você já participa deste servidor.');
+    window.pendingInvite={code,...inv,server};
+    if($('inviteJoinText')) $('inviteJoinText').innerHTML=`Você foi convidada para <b>${server.name||'Servidor'}</b>.`;
     window.openModal?.('inviteJoinModal');
   }
-
-  document.addEventListener('click', e => {
-    const textEl = e.target.closest?.('.msg-text');
-    if(!textEl) return;
-    const code = inviteCodeFromText(textEl.textContent);
-    if(code){ e.preventDefault(); openInviteCode(code); }
-  });
-  const obs = new MutationObserver(() => {
-    document.querySelectorAll('.msg-text').forEach(el => {
-      const code = inviteCodeFromText(el.textContent);
-      if(code && !el.dataset.inviteReady){
-        el.dataset.inviteReady='1'; el.classList.add('nf-invite-message'); el.title='Abrir convite do servidor';
-      }
+  function linkifyInvites(){
+    document.querySelectorAll('.msg-text').forEach(el=>{
+      if(el.dataset.nfLinked==='1') return;
+      const text=el.textContent||'',code=inviteCodeFromText(text); if(!code) return;
+      const url=`https://nuvemfofa.netlify.app/?invite=${encodeURIComponent(code)}`;
+      el.textContent='';
+      const a=document.createElement('a');a.className='nf-invite-link';a.href=url;a.textContent=url;a.title='Abrir convite do servidor';
+      a.addEventListener('click',e=>{e.preventDefault();openInviteCode(code)});
+      el.appendChild(a);el.dataset.nfLinked='1';
     });
-  });
-  obs.observe(document.documentElement,{subtree:true,childList:true});
-
-  // Visualizador realmente em tela cheia para transmissões e fotos.
-  window.toggleStreamFocusFullscreen = async function(){
-    const focus = $('streamFocus');
-    if(!focus) return;
-    try{
-      if(document.fullscreenElement) await document.exitFullscreen();
-      else await focus.requestFullscreen();
-    }catch{ window.toast?.('Não foi possível abrir em tela cheia.'); }
-  };
-
-  document.addEventListener('dblclick', e => {
-    const v = e.target.closest?.('#streamFocusVideo');
-    if(v) toggleStreamFocusFullscreen();
-  });
-
-  // Foto de perfil: um clique já abre grande; duplo clique entra em fullscreen.
-  document.addEventListener('dblclick', async e => {
-    const img = e.target.closest?.('.profile-avatar-hd,.voice-avatar-xl,.avatar-full');
-    if(!img) return;
-    window.openAvatarFullscreen?.(img.src);
-    setTimeout(async()=>{try{const viewer=$('mediaViewer');if(viewer&&!document.fullscreenElement)await viewer.requestFullscreen()}catch{}},60);
-  });
-
-  // Botão extra no overlay de transmissão sem depender do ícone antigo.
-  const focusObs = new MutationObserver(() => {
-    const focus = $('streamFocus');
-    if(!focus || focus.querySelector('.nf-real-fullscreen')) return;
-    const controls = focus.querySelector('.stream-focus-controls');
-    if(!controls) return;
-    const b=document.createElement('button'); b.className='secondary nf-real-fullscreen'; b.textContent='Tela cheia'; b.onclick=toggleStreamFocusFullscreen; controls.appendChild(b);
-  });
-  focusObs.observe(document.documentElement,{subtree:true,childList:true});
+  }
+  const msgObs=new MutationObserver(linkifyInvites);
+  msgObs.observe(document.documentElement,{subtree:true,childList:true});
+  linkifyInvites();
 })();
