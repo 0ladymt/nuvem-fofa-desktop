@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('nuvemDesktop', {
   isDesktop:true,
   platform:process.platform,
-  version:'0.3.6',
+  version:'0.3.7',
   checkForUpdates:()=>ipcRenderer.invoke('nuvem-update-check'),
   installUpdate:()=>ipcRenderer.invoke('nuvem-update-install'),
   getUpdateStatus:()=>ipcRenderer.invoke('nuvem-update-status'),
@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('nuvemDesktop', {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-  for (const src of ['./v032-fixes.js','./v033-video-fixes.js','./v034-polish.js','./v035-runtime-fixes.js']) {
+  for (const src of ['./v032-fixes.js','./v033-video-fixes.js','./v034-polish.js','./v035-runtime-fixes.js','./v037-discord-fixes.js']) {
     const script = document.createElement('script');
     script.src = src;
     script.defer = true;
