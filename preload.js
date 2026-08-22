@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('nuvemDesktop', {
   isDesktop:true,
   platform:process.platform,
-  version:'0.3.13',
+  version:'0.3.14',
   checkForUpdates:()=>ipcRenderer.invoke('nuvem-update-check'),
   installUpdate:()=>ipcRenderer.invoke('nuvem-update-install'),
   getUpdateStatus:()=>ipcRenderer.invoke('nuvem-update-status'),
@@ -20,7 +20,6 @@ contextBridge.exposeInMainWorld('nuvemDesktop', {
   onUpdateEvent:(cb)=>{ipcRenderer.removeAllListeners('nuvem-update');ipcRenderer.on('nuvem-update',(_,data)=>cb(data));return ()=>ipcRenderer.removeAllListeners('nuvem-update')}
 });
 
-// Os hotfixes alteram algumas das mesmas funções globais; a ordem é intencional.
 window.addEventListener('DOMContentLoaded', async () => {
   const sources = [
     './v032-fixes.js',
@@ -32,7 +31,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     './v039-stream-hotfix.js',
     './v0310-stream-focus.js',
     './v0312-core-fixes.js',
-    './v0313-desktop-polish.js'
+    './v0313-desktop-polish.js',
+    './v0314-share-images-fix.js'
   ];
 
   for (const src of sources) {
