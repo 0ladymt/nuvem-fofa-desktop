@@ -55,14 +55,15 @@ app.whenReady().then(async()=>{
   }
   ipcMain.handle('nuvem-capture-sources',async()=>{
     const [screens,windows]=await Promise.all([
-      desktopCapturer.getSources({types:['screen'],thumbnailSize:{width:420,height:236},fetchWindowIcons:true}),
-      desktopCapturer.getSources({types:['window'],thumbnailSize:{width:420,height:236},fetchWindowIcons:true})
+      desktopCapturer.getSources({types:['screen'],thumbnailSize:{width:640,height:360},fetchWindowIcons:true}),
+      desktopCapturer.getSources({types:['window'],thumbnailSize:{width:640,height:360},fetchWindowIcons:true})
     ]);
     const pack=(s,type)=>({id:s.id,name:s.name,type,thumbnail:s.thumbnail?.toDataURL?.()||'',icon:s.appIcon?.toDataURL?.()||''});
     return [...screens.map(s=>pack(s,'screen')),...windows.map(s=>pack(s,'window'))];
   });
   ipcMain.handle('nuvem-capture-select',(_,sourceId)=>{pendingCaptureSourceId=String(sourceId||'');return true});
   ipcMain.handle('nuvem-copy-text',(_,text)=>{clipboard.writeText(String(text||''));return true});
+  ipcMain.handle('nuvem-window-fullscreen',(_,enabled)=>{if(!mainWindow||mainWindow.isDestroyed())return false;mainWindow.setFullScreen(!!enabled);return mainWindow.isFullScreen()});
   ipcMain.handle('nuvem-update-check',async()=>{if(!app.isPackaged)return {ok:false,dev:true};try{await autoUpdater.checkForUpdates();return {ok:true}}catch(e){return {ok:false,error:e.message}}});
   ipcMain.handle('nuvem-update-install',()=>{if(!app.isPackaged)return false;autoUpdater.quitAndInstall(true,true);return true});
   ipcMain.handle('nuvem-update-status',()=>({version:app.getVersion(),packaged:app.isPackaged}));
