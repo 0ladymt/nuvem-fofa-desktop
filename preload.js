@@ -32,7 +32,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     './v0310-stream-focus.js',
     './v0312-core-fixes.js',
     './v0313-desktop-polish.js',
-    './v0314-share-images-fix.js'
+    './v0314-final.js'
   ];
 
   for (const src of sources) {
