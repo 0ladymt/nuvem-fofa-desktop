@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('nuvemDesktop', {
   isDesktop:true,
   platform:process.platform,
-  version:'0.3.16',
+  version:'0.3.17',
   checkForUpdates:()=>ipcRenderer.invoke('nuvem-update-check'),
   installUpdate:()=>ipcRenderer.invoke('nuvem-update-install'),
   getUpdateStatus:()=>ipcRenderer.invoke('nuvem-update-status'),
@@ -33,7 +33,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     './v0312-core-fixes.js',
     './v0313-desktop-polish.js',
     './v0315-stability-images.js',
-    './v0316-server-images-share-ui.js'
+    './v0316-server-images-share-ui.js',
+    './v0317-share-picker-cleanup.js'
   ];
 
   for (const src of sources) {
