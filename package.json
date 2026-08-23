@@ -1,6 +1,6 @@
 {
   "name": "nuvem-fofa-desktop",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Nuvem Fofa desktop client",
   "main": "main.js",
   "private": true,
