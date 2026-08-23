@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('nuvemDesktop', {
   isDesktop:true,
   platform:process.platform,
-  version:'4.0.0',
+  version:'4.0.1',
   checkForUpdates:()=>ipcRenderer.invoke('nuvem-update-check'),
   installUpdate:()=>ipcRenderer.invoke('nuvem-update-install'),
   getUpdateStatus:()=>ipcRenderer.invoke('nuvem-update-status'),
@@ -23,7 +23,7 @@ contextBridge.exposeInMainWorld('nuvemDesktop', {
 window.addEventListener('DOMContentLoaded', async () => {
   const sources = [
     './v032-fixes.js','./v033-video-fixes.js','./v034-polish.js','./v035-runtime-fixes.js','./v037-discord-fixes.js','./v038-stream-fixes.js','./v039-stream-hotfix.js','./v0310-stream-focus.js','./v0312-core-fixes.js','./v0313-desktop-polish.js','./v0315-stability-images.js','./v0316-server-images-share-ui.js','./v0317-share-picker-cleanup.js','./v0318-discord-stream-settings.js','./v0319-stream-controls-userbar-fix.js','./v0320-call-audio-context.js',
-    './v400-core.js','./v400-ui.js','./v400-bridge.js'
+    './v400-core.js','./v400-ui.js','./v400-bridge.js','./v401-call-hotfix.js'
   ];
   for (const src of sources) {
     await new Promise(resolve=>{
