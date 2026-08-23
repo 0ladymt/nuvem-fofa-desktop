@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('nuvemDesktop', {
   isDesktop:true,
   platform:process.platform,
-  version:'0.3.22',
+  version:'4.0.0',
   checkForUpdates:()=>ipcRenderer.invoke('nuvem-update-check'),
   installUpdate:()=>ipcRenderer.invoke('nuvem-update-install'),
   getUpdateStatus:()=>ipcRenderer.invoke('nuvem-update-status'),
@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('nuvemDesktop', {
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
+  // Mantemos apenas as correções antigas que ainda sustentam recursos aprovados
+  // (imagens, seletor de transmissão e controles) e removemos as camadas 0.3.21/0.3.22,
+  // que competiam com as configurações da V4.
   const sources = [
     './v032-fixes.js',
     './v033-video-fixes.js',
@@ -38,8 +41,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     './v0318-discord-stream-settings.js',
     './v0319-stream-controls-userbar-fix.js',
     './v0320-call-audio-context.js',
-    './v0321-discord-overhaul.js',
-    './v0322-settings-theme-fix.js'
+    './v400-core.js',
+    './v400-ui.js'
   ];
 
   for (const src of sources) {
@@ -49,7 +52,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       script.async = false;
       script.onload = resolve;
       script.onerror = () => {
-        console.error('[Nuvem Fofa] Falha ao carregar hotfix:', src);
+        console.error('[Nuvem Fofa] Falha ao carregar módulo:', src);
         resolve();
       };
       document.body.appendChild(script);
