@@ -1,0 +1,60 @@
+name: Release Nuvem Fofa V4.0.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/release-v400.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release-v400:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Sync lockfile to package version
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npx electron-builder --win nsis --publish never
+
+      - name: Verify release files
+        shell: powershell
+        run: |
+          $required = @(
+            "dist/Nuvem-Fofa-Setup-4.0.0.exe",
+            "dist/Nuvem-Fofa-Setup-4.0.0.exe.blockmap",
+            "dist/latest.yml"
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) { throw "Arquivo obrigatório ausente: $file" }
+            Write-Host "OK: $file"
+          }
+
+      - name: Publish V4.0.0 release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v4.0.0
+          target_commitish: main
+          name: Nuvem Fofa V4.0.0
+          generate_release_notes: true
+          files: |
+            dist/Nuvem-Fofa-Setup-4.0.0.exe
+            dist/Nuvem-Fofa-Setup-4.0.0.exe.blockmap
+            dist/latest.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
