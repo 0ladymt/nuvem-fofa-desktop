@@ -21,41 +21,13 @@ contextBridge.exposeInMainWorld('nuvemDesktop', {
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
-  // Mantemos apenas as correções antigas que ainda sustentam recursos aprovados
-  // (imagens, seletor de transmissão e controles) e removemos as camadas 0.3.21/0.3.22,
-  // que competiam com as configurações da V4.
   const sources = [
-    './v032-fixes.js',
-    './v033-video-fixes.js',
-    './v034-polish.js',
-    './v035-runtime-fixes.js',
-    './v037-discord-fixes.js',
-    './v038-stream-fixes.js',
-    './v039-stream-hotfix.js',
-    './v0310-stream-focus.js',
-    './v0312-core-fixes.js',
-    './v0313-desktop-polish.js',
-    './v0315-stability-images.js',
-    './v0316-server-images-share-ui.js',
-    './v0317-share-picker-cleanup.js',
-    './v0318-discord-stream-settings.js',
-    './v0319-stream-controls-userbar-fix.js',
-    './v0320-call-audio-context.js',
-    './v400-core.js',
-    './v400-ui.js'
+    './v032-fixes.js','./v033-video-fixes.js','./v034-polish.js','./v035-runtime-fixes.js','./v037-discord-fixes.js','./v038-stream-fixes.js','./v039-stream-hotfix.js','./v0310-stream-focus.js','./v0312-core-fixes.js','./v0313-desktop-polish.js','./v0315-stability-images.js','./v0316-server-images-share-ui.js','./v0317-share-picker-cleanup.js','./v0318-discord-stream-settings.js','./v0319-stream-controls-userbar-fix.js','./v0320-call-audio-context.js',
+    './v400-core.js','./v400-ui.js','./v400-bridge.js'
   ];
-
   for (const src of sources) {
-    await new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = false;
-      script.onload = resolve;
-      script.onerror = () => {
-        console.error('[Nuvem Fofa] Falha ao carregar módulo:', src);
-        resolve();
-      };
-      document.body.appendChild(script);
+    await new Promise(resolve=>{
+      const script=document.createElement('script');script.src=src;script.async=false;script.onload=resolve;script.onerror=()=>{console.error('[Nuvem Fofa] Falha ao carregar módulo:',src);resolve()};document.body.appendChild(script)
     });
   }
 });
