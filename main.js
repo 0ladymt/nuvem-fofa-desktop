@@ -32,7 +32,7 @@ function createWindow(){
   mainWindow=new BrowserWindow({width:1440,height:900,minWidth:980,minHeight:650,backgroundColor:'#111214',title:'Nuvem Fofa',icon:path.join(__dirname,'assets','nuvem-fofa.ico'),autoHideMenuBar:true,frame:false,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   mainWindow.loadFile(path.join(__dirname,'app','index.html'));
   mainWindow.on('maximize',sendWindowState);mainWindow.on('unmaximize',sendWindowState);mainWindow.on('enter-full-screen',sendWindowState);mainWindow.on('leave-full-screen',sendWindowState);
-  mainWindow.webContents.on('did-finish-load',()=>{sendWindowState();mainWindow.webContents.executeJavaScript(`(()=>{if(document.getElementById('nf-v400-core'))return;const s=document.createElement('script');s.id='nf-v400-core';s.src='./v400-core.js';s.onerror=()=>console.error('[NF4] falha ao carregar v400-core.js');document.body.appendChild(s)})()`).catch(err=>log.error('[NF4] injection',err))});
+  mainWindow.webContents.on('did-finish-load',sendWindowState);
   mainWindow.on('closed',()=>{mainWindow=null});
 }
 app.whenReady().then(async()=>{
